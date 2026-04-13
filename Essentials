@@ -1,6 +1,3 @@
--- ERX Essentials - Dedicated "Essentials" Tab (Already Loaded Check Removed)
--- Auto FWD + Sharper Steering on entering a new car (manual control still works)
-
 repeat task.wait() until _G.WindUI and _G.Window and _G.Functions
 if not _G.ERXStructure then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/adamMasMusic/ERX/refs/heads/main/structure.lua"))()
@@ -556,10 +553,10 @@ EssentialsTab:Button({
     Icon = "plus-circle",
     Callback = function()
         local path = "WindUI/CustomFeatures/CustomFeatures.lua"
-        local line = '\nloadstring(game:HttpGet("YOUR_ESSENTIALS_URL"))() -- Essentials for ERX\n'
+        local line = '\nloadstring(game:HttpGet("https://raw.githubusercontent.com/imcastel/ERX/refs/heads/main/Essentials"))() -- Essentials for ERX\n'
         local ok, err = pcall(appendfile, path, line)
         if ok then
-            Notify("Custom Features", "Added!\nReplace YOUR_ESSENTIALS_URL with your raw script URL.", 8, "check-circle")
+            Notify("Custom Features", "Added!", 8, "check-circle")
         else
             Notify("Custom Features", "Failed: " .. tostring(err), 5, "x-circle")
         end

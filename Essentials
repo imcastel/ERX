@@ -338,7 +338,7 @@ end)
 task.spawn(SetupAutoApply)
 
 -- ====================== Dedicated Essentials Tab ======================
-local EssentialsTab = Window:Tab({ Title = "Essentials", Icon = "star" })
+local EssentialsTab = Window:Tab({ Title = "Essentials", Icon = "lucide:sprout" })
 
 -- FLINGING
 EssentialsTab:Section({ Title = "Flinging" })
@@ -663,5 +663,5 @@ WindUI:Notify({
     Title = "Essentials loaded",
     Content = "Auto FWD + Sharper Steering on car entry enabled",
     Duration = 5,
-    Icon = "star",
+    Icon = "lucide:sprout",
 })

@@ -1,0 +1,670 @@
+-- ERX Essentials - Dedicated "Essentials" Tab (Already Loaded Check Removed)
+-- Auto FWD + Sharper Steering on entering a new car (manual control still works)
+
+repeat task.wait() until _G.WindUI and _G.Window and _G.Functions
+if not _G.ERXStructure then
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/adamMasMusic/ERX/refs/heads/main/structure.lua"))()
+end
+repeat task.wait() until _G.ERXStructure
+
+local WindUI = _G.WindUI
+local Window = _G.Window
+local Functions = _G.Functions
+local structure = _G.ERXStructure
+
+local Players = cloneref(game:GetService("Players"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
+local HttpService = cloneref(game:GetService("HttpService"))
+local RunService = cloneref(game:GetService("RunService"))
+local LocalPlayer = Players.LocalPlayer
+local Workspace = cloneref(game:GetService("Workspace"))
+local Vehicles = Workspace:WaitForChild("Vehicles", 9e9)
+local Camera = Workspace.CurrentCamera
+
+-- Config
+local CONFIG_FILE = "ERX/Essentials.json"
+local function EnsureFolder(path)
+    if not isfolder(path) then makefolder(path) end
+end
+local function LoadConfig()
+    if isfile(CONFIG_FILE) then
+        local ok, data = pcall(function()
+            return HttpService:JSONDecode(readfile(CONFIG_FILE))
+        end)
+        if ok and type(data) == "table" then return data end
+    end
+    return {}
+end
+local function SaveConfig(data)
+    EnsureFolder("ERX")
+    pcall(writefile, CONFIG_FILE, HttpService:JSONEncode(data))
+end
+local cfg = LoadConfig()
+
+-- Executor detection + WEAO
+local ERX_SUPPORTED_EXECUTORS = {
+    ["volt"] = { display = "Volt", platform = "PC", paid = true, recommended = true },
+    ["synapse z"] = { display = "Synapse Z", platform = "PC", paid = true, recommended = true },
+    ["synapsez"] = { display = "Synapse Z", platform = "PC", paid = true, recommended = true },
+    ["potassium"] = { display = "Potassium", platform = "PC", paid = true, recommended = false },
+    ["madium"] = { display = "Madium", platform = "PC", paid = false, recommended = true },
+    ["ronix"] = { display = "Ronix", platform = "PC/Mobile", paid = false, recommended = false },
+    ["opiumware"] = { display = "OpiumWare", platform = "Mac", paid = false, recommended = false },
+}
+local ExecutorName = (identifyexecutor and identifyexecutor()) or "Unknown"
+local SupportedInfo = ERX_SUPPORTED_EXECUTORS[ExecutorName:lower()]
+local WEAOData = nil
+local function FetchWEAO(name)
+    local ok, response = pcall(function()
+        return request({
+            Url = "https://weao.xyz/api/status/exploits/" .. name,
+            Method = "GET",
+            Headers = { ["User-Agent"] = "WEAO-3PService" },
+        })
+    end)
+    if not ok or not response or response.StatusCode ~= 200 then return nil end
+    local parsed_ok, data = pcall(HttpService.JSONDecode, HttpService, response.Body)
+    if parsed_ok and type(data) == "table" and data.title then return data end
+    return nil
+end
+task.spawn(function()
+    if ExecutorName ~= "Unknown" then
+        WEAOData = FetchWEAO(ExecutorName)
+    end
+end)
+
+-- CarFly physics via loadstring (full original)
+if not getgenv()._essentials_carfly_loaded then
+    getgenv()._essentials_carfly_loaded = true
+    local src = [=[
+if getgenv()._essentials_carfly_final then return end
+getgenv()._essentials_carfly_final = true
+local on = false
+local onCooldown = false
+local currentSpeed = 250
+local smoothGyro = CFrame.new()
+local hb, gy, vl
+local function clean()
+    if hb then hb:Disconnect() hb = nil end
+    if gy then pcall(function() gy:Destroy() gy = nil end) end
+    if vl then pcall(function() vl:Destroy() vl = nil end) end
+end
+local function attach()
+    local p = game.Players.LocalPlayer
+    local c = p and p.Character
+    if not c then return end
+    local h = c:FindFirstChildWhichIsA("Humanoid")
+    if not h or not h.Sit then return end
+    local st = h.SeatPart
+    if not st then return end
+    local v = st.Parent
+    if not v or not v:FindFirstChild("Body") then return end
+    local col = v.Body:FindFirstChild("CollisionPart")
+    if not col then return end
+    for _, d in ipairs(v:GetDescendants()) do
+        if d:IsA("TouchTransmitter") then d:Destroy() end
+    end
+    workspace.CurrentCamera.CameraSubject = h
+    gy = Instance.new("BodyGyro", col)
+    gy.CFrame = workspace.CurrentCamera.CFrame
+    gy.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    gy.P = 9e4
+    vl = Instance.new("BodyVelocity", col)
+    vl.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    vl.P = 9e4
+    vl.Velocity = Vector3.new()
+    smoothGyro = workspace.CurrentCamera.CFrame
+    local smoothVel = Vector3.new()
+    hb = game:GetService("RunService").Heartbeat:Connect(function()
+        if not on then if vl then vl.Velocity = Vector3.new() end return end
+        if not h.Sit then clean() return end
+        local t = Vector3.new()
+        local u = game:GetService("UserInputService")
+        local cam = workspace.CurrentCamera.CFrame
+        if u:IsKeyDown(Enum.KeyCode.W) then t += cam.LookVector * currentSpeed end
+        if u:IsKeyDown(Enum.KeyCode.S) then t += cam.LookVector * -currentSpeed end
+        if u:IsKeyDown(Enum.KeyCode.A) then t += cam.RightVector * -currentSpeed end
+        if u:IsKeyDown(Enum.KeyCode.D) then t += cam.RightVector * currentSpeed end
+        smoothVel = smoothVel:Lerp(t, 0.15)
+        if vl then vl.Velocity = smoothVel end
+        if gy then
+            smoothGyro = smoothGyro:Lerp(cam, 0.2)
+            gy.CFrame = smoothGyro
+        end
+    end)
+end
+getgenv()._essentials_carfly_api = {
+    toggle = function(state)
+        if onCooldown then return false end
+        local h = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildWhichIsA("Humanoid")
+        if state and (not h or not h.Sit) then return false end
+        onCooldown = true
+        task.delay(0.25, function() onCooldown = false end)
+        on = state
+        pcall(function()
+            local bw = game:GetService("Workspace"):FindFirstChild("BorderWalls")
+            if bw then
+                for _, part in ipairs(bw:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = not on end
+                end
+            end
+        end)
+        if on then attach() else task.defer(clean) end
+        return true
+    end,
+    setSpeed = function(s) currentSpeed = s end,
+    getSpeed = function() return currentSpeed end,
+    isOn = function() return on end,
+}
+]=]
+    pcall(loadstring(src))
+end
+local carflyAPI = getgenv()._essentials_carfly_api
+
+-- Vehicle helpers
+local VehicleDefaults = {}
+local function GetVehicle()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildWhichIsA("Humanoid")
+    if hum and hum.Sit and hum.SeatPart and hum.SeatPart.Name == "DriverSeat" then
+        return hum.SeatPart.Parent
+    end
+    for _, v in ipairs(Vehicles:GetChildren()) do
+        if v:GetAttribute("Owner") == LocalPlayer.Name then return v end
+    end
+end
+local function GetDrive(vehicle)
+    if not vehicle or not vehicle:FindFirstChild("Drive Controller") then return false, nil end
+    local ok, Drive = pcall(require, vehicle:FindFirstChild("Drive Controller"))
+    return ok and Drive ~= nil, ok and Drive or nil
+end
+local function StoreDefaults(vehicle)
+    if VehicleDefaults[vehicle] then return end
+    local ok, Drive = GetDrive(vehicle)
+    if not ok then return end
+    VehicleDefaults[vehicle] = {}
+    for _, key in ipairs({
+        "Horsepower", "FinalDrive", "RevAccel", "FAntiRoll", "SteerDecay",
+        "BrakeForce", "PBrakeForce", "Config",
+        "SteerRatio", "Ackerman", "SteerSpeed",
+        "FSusStiffness", "RSusStiffness", "FSusDamping", "RSusDamping",
+        "RAntiRoll", "TCSThreshold", "ABSThreshold",
+        "ShiftUpTime", "ShiftDnTime", "E_Torque", "E_Horsepower",
+    }) do
+        VehicleDefaults[vehicle][key] = rawget(Drive, key)
+    end
+end
+local function TryRestartVehicleUI()
+    local gui = LocalPlayer.PlayerGui:FindFirstChild("GameGui")
+    local vGui = gui and gui:FindFirstChild("VehicleGui")
+    local vInt = vGui and vGui:FindFirstChild("Vehicle Interface")
+    if vInt then
+        pcall(function()
+            vInt.Drive.Enabled = false
+            task.wait()
+            vInt.Drive.Enabled = true
+        end)
+    end
+end
+local function Notify(title, content, duration, icon)
+    WindUI:Notify({
+        Title = "Essentials — " .. title,
+        Content = content,
+        Duration = duration or 4,
+        Icon = icon or "info",
+    })
+end
+
+-- ====================== Car QoL Features ======================
+local function issitting(humanoid)
+    return humanoid and humanoid.SeatPart ~= nil
+end
+
+local function enterCar()
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+    if not humanoid then Notify("Enter Car", "No character found!", 3) return end
+    if issitting(humanoid) then Notify("Enter Car", "You're already in a vehicle!", 3) return end
+    local vehicle = Functions:GetCurrentLocalPlayerCar() or GetVehicle()
+    if not vehicle then Notify("Enter Car", "No vehicle found — spawn your car first.", 4) return end
+    local driverSeat = vehicle:FindFirstChild("DriverSeat")
+    if not driverSeat then Notify("Enter Car", "Driver seat not found!", 3) return end
+    driverSeat:Sit(humanoid)
+    Notify("Enter Car", "Success!", 2)
+end
+
+local function bringCar()
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
+    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not hrp then Notify("Bring Car", "No character found!", 3) return end
+    if issitting(humanoid) then Notify("Bring Car", "You're already in a vehicle!", 3) return end
+    local vehicle = Functions:GetCurrentLocalPlayerCar() or GetVehicle()
+    if not vehicle then Notify("Bring Car", "No vehicle found. Spawn your car first.", 4) return end
+    local driverSeat = vehicle:FindFirstChild("DriverSeat")
+    if not driverSeat then Notify("Bring Car", "Driver seat not found!", 3) return end
+
+    local savedPosition = hrp.Position + Vector3.new(0, 3, 0)
+    local camLook = Camera.CFrame.LookVector
+    local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
+    local targetCFrame = CFrame.lookAt(savedPosition, savedPosition + flatLook)
+
+    Notify("Bring Car", "Bringing...", 2)
+    driverSeat:Sit(humanoid)
+    task.wait(0.3)
+    vehicle:PivotTo(targetCFrame)
+    Notify("Bring Car", "Success!", 3)
+end
+
+local isFlipping = false
+local function flipCar()
+    if isFlipping then return end
+    local vehicle = Functions:GetCurrentLocalPlayerCar() or GetVehicle()
+    if not vehicle or not vehicle.PrimaryPart then
+        Notify("Flip Car", "No vehicle found - spawn your car first.", 4)
+        return
+    end
+    isFlipping = true
+    local primaryPart = vehicle.PrimaryPart
+    local currentCF = vehicle:GetPivot()
+    local look = currentCF.LookVector
+    local flatLook = Vector3.new(look.X, 0, look.Z)
+    if flatLook.Magnitude < 0.01 then flatLook = Vector3.new(0, 0, 1) end
+    flatLook = flatLook.Unit
+    local targetCF = CFrame.lookAt(currentCF.Position, currentCF.Position + flatLook)
+
+    local steps = 20
+    local current = currentCF
+    for i = 1, steps do
+        local alpha = i / steps
+        local eased = 1 - (1 - alpha) ^ 2
+        local interpolated = current:Lerp(targetCF, eased)
+        vehicle:PivotTo(interpolated)
+        pcall(function() primaryPart.AssemblyAngularVelocity = Vector3.zero end)
+        RunService.Heartbeat:Wait()
+    end
+    vehicle:PivotTo(targetCF)
+    pcall(function()
+        primaryPart.AssemblyAngularVelocity = Vector3.zero
+        primaryPart.AssemblyLinearVelocity = Vector3.zero
+    end)
+    isFlipping = false
+    Notify("Flip Car", "Success!", 2)
+end
+
+-- ====================== Auto Apply on Car Entry ======================
+local function ApplyDefaultMods(vehicle)
+    if not vehicle then return end
+    local ok, Drive = GetDrive(vehicle)
+    if not ok then return end
+
+    if not VehicleDefaults[vehicle] then StoreDefaults(vehicle) end
+
+    -- Auto FWD
+    rawset(Drive, "Config", "FWD")
+    -- Auto Sharper Steering
+    rawset(Drive, "SteerRatio", 13)
+    rawset(Drive, "Ackerman", 1.1)
+    rawset(Drive, "SteerSpeed", 0.05)
+
+    TryRestartVehicleUI()
+
+    Notify("Auto Mods", "FWD + Sharper Steering applied to new car", 3, "check-circle")
+end
+
+-- Listen for when player sits in any vehicle seat
+local seatedConnection
+local function SetupAutoApply()
+    if seatedConnection then seatedConnection:Disconnect() end
+
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+
+    seatedConnection = humanoid.Seated:Connect(function(isSeated, seatPart)
+        if isSeated and seatPart and seatPart.Name == "DriverSeat" then
+            local vehicle = seatPart.Parent
+            if vehicle and vehicle:IsDescendantOf(Vehicles) then
+                task.wait(0.5) -- small delay to let Drive Controller load
+                ApplyDefaultMods(vehicle)
+            end
+        end
+    end)
+end
+
+-- Re-setup when character respawns
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    SetupAutoApply()
+end)
+
+-- Initial setup
+task.spawn(SetupAutoApply)
+
+-- ====================== Dedicated Essentials Tab ======================
+local EssentialsTab = Window:Tab({ Title = "Essentials", Icon = "star" })
+
+-- FLINGING
+EssentialsTab:Section({ Title = "Flinging" })
+local originalWalkFling = nil
+local originalCarFling = nil
+local autoNoclipToggle = EssentialsTab:Toggle({
+    Title = "Auto Noclip",
+    Desc = "Automatically toggles noclip when fling is enabled.",
+    Value = cfg.autoNoclip or false,
+    Callback = function(state)
+        cfg.autoNoclip = state
+        if state then
+            originalWalkFling = hookfunction(structure.trolling.WalkFling.Callback, function(toggleState)
+                structure.localPlayer.Noclip:Set(toggleState)
+                return originalWalkFling(toggleState)
+            end)
+            originalCarFling = hookfunction(structure.trolling.CarFling.Callback, function(toggleState)
+                structure.vehicleMods.NoCollision:Set(toggleState)
+                return originalCarFling(toggleState)
+            end)
+        else
+            if originalWalkFling then
+                hookfunction(structure.trolling.WalkFling.Callback, originalWalkFling)
+                originalWalkFling = nil
+            end
+            if originalCarFling then
+                hookfunction(structure.trolling.CarFling.Callback, originalCarFling)
+                originalCarFling = nil
+            end
+        end
+    end,
+})
+
+local flingKeybindEnabled = cfg.flingKeybindEnabled ~= false
+EssentialsTab:Toggle({
+    Title = "Fling Keybind Enabled",
+    Desc = "Turn this ON to allow the Fling Keybind to work",
+    Value = flingKeybindEnabled,
+    Callback = function(state)
+        flingKeybindEnabled = state
+        cfg.flingKeybindEnabled = state
+    end,
+})
+
+local currentFlingKeybind = Enum.KeyCode[cfg.flingKeybind or "V"] or Enum.KeyCode.V
+EssentialsTab:Keybind({
+    Title = "Fling Keybind",
+    Desc = "Toggle fling. In a vehicle = Car Fling, on foot = Walk Fling.",
+    Value = cfg.flingKeybind or "V",
+    Callback = function(v)
+        if Enum.KeyCode[v] then
+            currentFlingKeybind = Enum.KeyCode[v]
+            cfg.flingKeybind = v
+        end
+    end,
+})
+
+-- CAR FLY
+EssentialsTab:Section({ Title = "Car Fly" })
+EssentialsTab:Paragraph({
+    Title = "Controls",
+    Desc = "W / A / S / D to fly in camera direction. Must be seated in a vehicle.",
+})
+local FlyToggle
+FlyToggle = EssentialsTab:Toggle({
+    Title = "Car Fly",
+    Desc = "Fly your vehicle using WASD.",
+    Icon = "plane",
+    Value = false,
+    Callback = function(state)
+        if not carflyAPI then
+            Notify("CarFly", "CarFly API not ready yet.", 3, "alert-triangle")
+            task.delay(0, function() FlyToggle:Set(false) end)
+            return
+        end
+        local ok = carflyAPI.toggle(state)
+        if state and not ok then
+            task.delay(0, function() FlyToggle:Set(false) end)
+            Notify("CarFly", "You must be seated in a vehicle!", 3, "alert-triangle")
+            return
+        end
+        Notify("CarFly", "CarFly: " .. (state and "ON" or "OFF"), 2, state and "plane-takeoff" or "plane-landing")
+    end,
+})
+getgenv()._essentials_carfly_keybind = function()
+    if carflyAPI then FlyToggle:Set(not carflyAPI.isOn()) end
+end
+local currentFlyKeybind = Enum.KeyCode[cfg.flyKeybind or "J"] or Enum.KeyCode.J
+EssentialsTab:Keybind({
+    Title = "Car Fly Keybind",
+    Desc = "Key to toggle Car Fly on / off.",
+    Value = cfg.flyKeybind or "J",
+    Callback = function(v)
+        if Enum.KeyCode[v] then
+            currentFlyKeybind = Enum.KeyCode[v]
+            cfg.flyKeybind = v
+        end
+    end,
+})
+local flySpeedValue = cfg.flySpeed or 250
+EssentialsTab:Slider({
+    Title = "Fly Speed",
+    Desc = "Vehicle fly speed (25 – 3000).",
+    Step = 25,
+    Value = { Min = 25, Max = 3000, Default = flySpeedValue },
+    Callback = function(v)
+        flySpeedValue = tonumber(v) or 250
+        cfg.flySpeed = flySpeedValue
+        if carflyAPI then carflyAPI.setSpeed(flySpeedValue) end
+    end,
+})
+
+-- VEHICLE MODS
+EssentialsTab:Section({ Title = "Vehicle Mods" })
+local selectedDrivetrain = cfg.drivetrain or "FWD"
+EssentialsTab:Dropdown({
+    Title = "Drivetrain",
+    Desc = "Changes which wheels receive engine power.",
+    Values = { "FWD", "RWD", "AWD" },
+    Multi = false,
+    Value = selectedDrivetrain,
+    Callback = function(v)
+        selectedDrivetrain = v
+        cfg.drivetrain = v
+    end,
+})
+EssentialsTab:Button({
+    Title = "Apply Drivetrain",
+    Desc = "Applies the selected drivetrain to your current vehicle.",
+    Icon = "settings",
+    Callback = function()
+        local vehicle = GetVehicle()
+        if not vehicle then Notify("Drivetrain", "No vehicle found!", 4, "alert-triangle") return end
+        local ok, Drive = GetDrive(vehicle)
+        if not ok then Notify("Drivetrain", "Could not read Drive Controller.", 4, "x-circle") return end
+        if not VehicleDefaults[vehicle] then StoreDefaults(vehicle) end
+        local old = rawget(Drive, "Config")
+        rawset(Drive, "Config", selectedDrivetrain)
+        TryRestartVehicleUI()
+        Notify("Drivetrain", "Config: " .. tostring(old) .. " → " .. selectedDrivetrain, 5, "check-circle")
+    end,
+})
+EssentialsTab:Button({
+    Title = "Apply Sharper Steering",
+    Desc = "Reduces SteerRatio and increases SteerSpeed & Ackerman.",
+    Icon = "navigation",
+    Callback = function()
+        local vehicle = GetVehicle()
+        if not vehicle then Notify("Steering", "No vehicle found!", 4, "alert-triangle") return end
+        local ok, Drive = GetDrive(vehicle)
+        if not ok then Notify("Steering", "Could not read Drive Controller.", 4, "x-circle") return end
+        if not VehicleDefaults[vehicle] then StoreDefaults(vehicle) end
+        rawset(Drive, "SteerRatio", 13)
+        rawset(Drive, "Ackerman", 1.1)
+        rawset(Drive, "SteerSpeed", 0.05)
+        TryRestartVehicleUI()
+        Notify("Steering", "Sharper steering applied!", 4, "check-circle")
+    end,
+})
+EssentialsTab:Button({
+    Title = "Reset Vehicle to Default",
+    Desc = "Restores all original drive values for your current vehicle.",
+    Icon = "rotate-ccw",
+    Callback = function()
+        local vehicle = GetVehicle()
+        if not vehicle then Notify("Reset", "No vehicle found!", 4, "alert-triangle") return end
+        local ok, Drive = GetDrive(vehicle)
+        if not ok then Notify("Reset", "Drive Controller not found.", 4, "x-circle") return end
+        local def = VehicleDefaults[vehicle]
+        if not def then Notify("Reset", "No stored defaults — apply something first.", 4, "alert-triangle") return end
+        for key, value in pairs(def) do rawset(Drive, key, value) end
+        TryRestartVehicleUI()
+        Notify("Reset", "Vehicle restored to defaults.", 4, "check-circle")
+    end,
+})
+
+-- CAR QOL
+EssentialsTab:Section({ Title = "Car QoL" })
+EssentialsTab:Button({
+    Title = "Enter Car",
+    Desc = "Quickly enter your spawned car (DriverSeat)",
+    Icon = "car",
+    Callback = enterCar,
+})
+EssentialsTab:Button({
+    Title = "Bring Car to Me",
+    Desc = "Bring your car to your position, facing camera direction",
+    Icon = "move",
+    Callback = bringCar,
+})
+EssentialsTab:Button({
+    Title = "Flip Car Upright",
+    Desc = "Smoothly flips your car back upright",
+    Icon = "rotate-cw",
+    Callback = flipCar,
+})
+
+-- CONFIG
+EssentialsTab:Section({ Title = "Config" })
+EssentialsTab:Button({
+    Title = "Save Config",
+    Desc = "Saves all current settings to ERX/Essentials.json.",
+    Icon = "save",
+    Callback = function()
+        SaveConfig(cfg)
+        Notify("Config", "Settings saved!", 3, "check-circle")
+    end,
+})
+EssentialsTab:Button({
+    Title = "Add to Custom Features",
+    Desc = "Adds Essentials to your ERX custom features so it loads automatically.",
+    Icon = "plus-circle",
+    Callback = function()
+        local path = "WindUI/CustomFeatures/CustomFeatures.lua"
+        local line = '\nloadstring(game:HttpGet("YOUR_ESSENTIALS_URL"))() -- Essentials for ERX\n'
+        local ok, err = pcall(appendfile, path, line)
+        if ok then
+            Notify("Custom Features", "Added!\nReplace YOUR_ESSENTIALS_URL with your raw script URL.", 8, "check-circle")
+        else
+            Notify("Custom Features", "Failed: " .. tostring(err), 5, "x-circle")
+        end
+    end,
+})
+
+-- INPUT LISTENER
+task.spawn(function()
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed or not _G.WindUI then return end
+        if flingKeybindEnabled and input.KeyCode == currentFlingKeybind then
+            local char = LocalPlayer.Character
+            local hum = char and char:FindFirstChildWhichIsA("Humanoid")
+            if hum and hum.SeatPart and hum.SeatPart:IsDescendantOf(Workspace.Vehicles) then
+                structure.trolling.CarFling:Set(not structure.trolling.CarFling.Value)
+            else
+                structure.trolling.WalkFling:Set(not structure.trolling.WalkFling.Value)
+            end
+            
+            local newState = structure.trolling.CarFling.Value or structure.trolling.WalkFling.Value
+            if newState then
+                WindUI:Notify({ Title = "Fling Keybind", Content = "✅ Fling ENABLED", Duration = 3, Icon = "check-circle" })
+            else
+                WindUI:Notify({ Title = "Fling Keybind", Content = "❌ Fling DISABLED", Duration = 3, Icon = "x-circle" })
+            end
+        end
+        if input.KeyCode == currentFlyKeybind then
+            if getgenv()._essentials_carfly_keybind then
+                getgenv()._essentials_carfly_keybind()
+            end
+        end
+    end)
+end)
+
+-- CREDITS
+EssentialsTab:Section({ Title = "Credits" })
+EssentialsTab:Paragraph({
+    Title = "Essentials for ERX",
+    Desc = "Combines QoL, CarFly, Vehicle Mods + Car QoL.\n Made by Claude + Grok. \n Revised by castel0v2",
+})
+
+-- EXECUTOR INFO
+EssentialsTab:Section({ Title = "Executor Info" })
+local ExecutorInfoParagraph
+local function BuildExecutorDesc()
+    local lines = { "Executor: " .. ExecutorName }
+    if SupportedInfo then
+        table.insert(lines, "ERX Support: ✅ Supported")
+        table.insert(lines, "Platform: " .. SupportedInfo.platform)
+        table.insert(lines, "Cost: " .. (SupportedInfo.paid and "Paid" or "Free"))
+        table.insert(lines, "Recommended: " .. (SupportedInfo.recommended and "⭐ Yes" or "No"))
+    else
+        table.insert(lines, "ERX Support: ⚠️ Not officially supported")
+        table.insert(lines, "Check the ERX discord for supported executors.")
+    end
+    if WEAOData then
+        table.insert(lines, "\n— Live WEAO Data —")
+        table.insert(lines, "Version: " .. (WEAOData.version or "?"))
+        table.insert(lines, "Up to date: " .. (WEAOData.updateStatus and "✅ Yes" or "❌ No"))
+        table.insert(lines, "Detected: " .. (WEAOData.detected and "⚠️ Yes" or "✅ No"))
+        if WEAOData.suncPercentage then
+            table.insert(lines, "sUNC Score: " .. WEAOData.suncPercentage .. "%")
+        end
+        if WEAOData.uncPercentage then
+            table.insert(lines, "UNC Score: " .. WEAOData.uncPercentage .. "%")
+        end
+    else
+        table.insert(lines, "\nWEAO data: Fetching...")
+    end
+    return table.concat(lines, "\n")
+end
+local function RefreshExecutorInfo()
+    if ExecutorInfoParagraph then ExecutorInfoParagraph:Destroy() end
+    ExecutorInfoParagraph = EssentialsTab:Paragraph({
+        Title = "Executor Details",
+        Desc = BuildExecutorDesc(),
+    })
+end
+RefreshExecutorInfo()
+EssentialsTab:Button({
+    Title = "Refresh Executor Info",
+    Desc = "Re-fetches your executor info from WEAO API.",
+    Icon = "refresh-cw",
+    Callback = function()
+        WindUI:Notify({ Title = "Essentials", Content = "Fetching from WEAO...", Duration = 2.5, Icon = "loader" })
+        task.spawn(function()
+            if ExecutorName ~= "Unknown" then
+                WEAOData = FetchWEAO(ExecutorName)
+            end
+            RefreshExecutorInfo()
+            WindUI:Notify({
+                Title = "Essentials",
+                Content = WEAOData and "✅ Executor info updated!" or "❌ Could not fetch from WEAO.",
+                Duration = 3,
+            })
+        end)
+    end,
+})
+
+-- Init
+if carflyAPI then carflyAPI.setSpeed(flySpeedValue) end
+task.delay(2, RefreshExecutorInfo)
+WindUI:Notify({
+    Title = "Essentials loaded",
+    Content = "Auto FWD + Sharper Steering on car entry enabled",
+    Duration = 5,
+    Icon = "star",
+})

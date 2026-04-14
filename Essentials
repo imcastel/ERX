@@ -595,7 +595,7 @@ end)
 EssentialsTab:Section({ Title = "Credits" })
 EssentialsTab:Paragraph({
     Title = "Essentials for ERX",
-    Desc = "Combines QoL, CarFly, Vehicle Mods + Car QoL.\n Made by Claude + Grok. \n Revised by castel0v2",
+    Desc = "Combines QoL, CarFly, Vehicle Mods + Car QoL.\nMade by Claude + Grok. \nRevised by castel0v2",
 })
 
 -- EXECUTOR INFO

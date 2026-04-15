@@ -44,6 +44,16 @@ local ERX_SUPPORTED_EXECUTORS = {
     ["ronix"] = { display = "Ronix", platform = "PC/Mobile", paid = false, recommended = false },
     ["opiumware"] = { display = "OpiumWare", platform = "Mac", paid = false, recommended = false },
 }
+local UNSUPPORTED_EXECUTORS = {
+    ["xeno"] = "Xeno",
+    ["wave"] = "Wave",
+    ["solara"] = "Solara",
+    ["velocity"] = "Velocity",
+    ["delta"] = "Delta",
+    ["sirhurt"] = "SirHurt",
+    ["hydrogen"] = "Hydrogen",
+    ["codex"] = "Codex",
+}
 local ExecutorName = (identifyexecutor and identifyexecutor()) or "Unknown"
 local SupportedInfo = ERX_SUPPORTED_EXECUTORS[ExecutorName:lower()]
 local WEAOData = nil
@@ -543,7 +553,7 @@ task.spawn(function()
             else
                 structure.trolling.WalkFling:Set(not structure.trolling.WalkFling.Value)
             end
-           
+          
             local newState = structure.trolling.CarFling.Value or structure.trolling.WalkFling.Value
             if newState then
                 WindUI:Notify({ Title = "Fling Keybind", Content = "✅ Fling ENABLED", Duration = 3, Icon = "check-circle" })
@@ -564,7 +574,7 @@ EssentialsTab:Paragraph({
     Title = "Essentials for ERX",
     Desc = "Combines QoL, CarFly, Vehicle Mods + Car QoL.\nMade by Claude + Grok. \nRevised by castel0v2",
 })
--- EXECUTOR INFO (moved above the support sections)
+-- EXECUTOR INFO
 EssentialsTab:Section({ Title = "Executor Info" })
 local ExecutorInfoParagraph
 local function BuildExecutorDesc()
@@ -626,29 +636,61 @@ EssentialsTab:Button({
 
 -- ERX Supported Executor info
 EssentialsTab:Section({ Title = "ERX Supported Executor info" })
-EssentialsTab:Paragraph({
+local SupportedParagraph
+local function BuildSupportedDesc()
+    local lines = {}
+    for internalName, info in pairs(ERX_SUPPORTED_EXECUTORS) do
+        local data = FetchWEAO(internalName)
+        local upToDate = (data and data.updateStatus) and "✅" or "❌"
+        local sunc = (data and data.suncPercentage) and (data.suncPercentage .. "%") or "N/A"
+        local unc = (data and data.uncPercentage) and (data.uncPercentage .. "%") or "N/A"
+        table.insert(lines, info.display .. ": ✅\nUp to date: " .. upToDate .. "\nsUNC Score: " .. sunc .. "\nUNC Score: " .. unc)
+    end
+    return table.concat(lines, "\n\n")
+end
+SupportedParagraph = EssentialsTab:Paragraph({
     Title = "Officially Supported by ERX",
-    Desc = "Potassium: ✅\nUp to date: ✅\nsUNC Score: 95%+\nUNC Score: 98%+\n\n" ..
-           "Volt: ✅\nUp to date: ❌\nsUNC Score: 92%\nUNC Score: 95%\n\n" ..
-           "Synapse Z: ✅\nUp to date: ❌\nsUNC Score: 90%\nUNC Score: 94%\n\n" ..
-           "Madium: ✅\nUp to date: ✅\nsUNC Score: 93%\nUNC Score: 96%\n\n" ..
-           "Ronix: ✅\nUp to date: ✅\nsUNC Score: 88%\nUNC Score: 92%\n\n" ..
-           "OpiumWare: ✅ (Mac)\nUp to date: ❌\nsUNC Score: 85%\nUNC Score: 90%"
+    Desc = BuildSupportedDesc(),
 })
 
 -- Unsupported ERX Executor info
 EssentialsTab:Section({ Title = "Unsupported ERX Executor info" })
-EssentialsTab:Paragraph({
+local UnsupportedParagraph
+local function BuildUnsupportedDesc()
+    local lines = {}
+    for internalName, displayName in pairs(UNSUPPORTED_EXECUTORS) do
+        local data = FetchWEAO(internalName)
+        local upToDate = (data and data.updateStatus) and "✅" or "❌"
+        local sunc = (data and data.suncPercentage) and (data.suncPercentage .. "%") or "N/A"
+        local unc = (data and data.uncPercentage) and (data.uncPercentage .. "%") or "N/A"
+        table.insert(lines, displayName .. ": ❌\nUp to date: " .. upToDate .. "\nsUNC Score: " .. sunc .. "\nUNC Score: " .. unc)
+    end
+    return table.concat(lines, "\n\n")
+end
+UnsupportedParagraph = EssentialsTab:Paragraph({
     Title = "Commonly Unsupported / Unstable for ERX",
-    Desc = "Xeno : ❌\nUp to date: ✅\nsUNC Score: 80%\nUNC Score: 85%\n\n" ..
-           "Wave : ❌\nUp to date: ❌\nsUNC Score: 88%\nUNC Score: 90%\n\n" ..
-           "Solara : ❌\nUp to date: ✅\nsUNC Score: 75%\nUNC Score: 82%\n\n" ..
-           "Velocity : ❌\nUp to date: ❌\nsUNC Score: 78%\nUNC Score: 84%\n\n" ..
-           "Delta : ❌\nUp to date: ❌\nsUNC Score: 70%\nUNC Score: 78%\n\n" ..
-           "SirHurt : ❌\nUp to date: ✅\nsUNC Score: 82%\nUNC Score: 87%\n\n" ..
-           "Hydrogen : ❌\nUp to date: ❌\nsUNC Score: 65%\nUNC Score: 72%\n\n" ..
-           "Codex : ❌\nUp to date: ❌\nsUNC Score: 68%\nUNC Score: 75%"
+    Desc = BuildUnsupportedDesc(),
 })
+
+-- Update the Refresh button to also refresh the new sections
+local oldRefresh = RefreshExecutorInfo
+RefreshExecutorInfo = function()
+    oldRefresh()
+    if SupportedParagraph then
+        SupportedParagraph:Destroy()
+        SupportedParagraph = EssentialsTab:Paragraph({
+            Title = "Officially Supported by ERX",
+            Desc = BuildSupportedDesc(),
+        })
+    end
+    if UnsupportedParagraph then
+        UnsupportedParagraph:Destroy()
+        UnsupportedParagraph = EssentialsTab:Paragraph({
+            Title = "Commonly Unsupported / Unstable for ERX",
+            Desc = BuildUnsupportedDesc(),
+        })
+    end
+end
 
 -- Init
 if carflyAPI then carflyAPI.setSpeed(flySpeedValue) end

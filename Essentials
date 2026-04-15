@@ -3,12 +3,10 @@ if not _G.ERXStructure then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/adamMasMusic/ERX/refs/heads/main/structure.lua"))()
 end
 repeat task.wait() until _G.ERXStructure
-
 local WindUI = _G.WindUI
 local Window = _G.Window
 local Functions = _G.Functions
 local structure = _G.ERXStructure
-
 local Players = cloneref(game:GetService("Players"))
 local UserInputService = cloneref(game:GetService("UserInputService"))
 local HttpService = cloneref(game:GetService("HttpService"))
@@ -17,7 +15,6 @@ local LocalPlayer = Players.LocalPlayer
 local Workspace = cloneref(game:GetService("Workspace"))
 local Vehicles = Workspace:WaitForChild("Vehicles", 9e9)
 local Camera = Workspace.CurrentCamera
-
 -- Config
 local CONFIG_FILE = "ERX/Essentials.json"
 local function EnsureFolder(path)
@@ -37,7 +34,6 @@ local function SaveConfig(data)
     pcall(writefile, CONFIG_FILE, HttpService:JSONEncode(data))
 end
 local cfg = LoadConfig()
-
 -- Executor detection + WEAO
 local ERX_SUPPORTED_EXECUTORS = {
     ["volt"] = { display = "Volt", platform = "PC", paid = true, recommended = true },
@@ -69,7 +65,6 @@ task.spawn(function()
         WEAOData = FetchWEAO(ExecutorName)
     end
 end)
-
 -- CarFly physics via loadstring (full original)
 if not getgenv()._essentials_carfly_loaded then
     getgenv()._essentials_carfly_loaded = true
@@ -157,7 +152,6 @@ getgenv()._essentials_carfly_api = {
     pcall(loadstring(src))
 end
 local carflyAPI = getgenv()._essentials_carfly_api
-
 -- Vehicle helpers
 local VehicleDefaults = {}
 local function GetVehicle()
@@ -211,12 +205,10 @@ local function Notify(title, content, duration, icon)
         Icon = icon or "info",
     })
 end
-
 -- ====================== Car QoL Features ======================
 local function issitting(humanoid)
     return humanoid and humanoid.SeatPart ~= nil
 end
-
 local function enterCar()
     local character = LocalPlayer.Character
     local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
@@ -229,7 +221,6 @@ local function enterCar()
     driverSeat:Sit(humanoid)
     Notify("Enter Car", "Success!", 2)
 end
-
 local function bringCar()
     local character = LocalPlayer.Character
     local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
@@ -240,19 +231,16 @@ local function bringCar()
     if not vehicle then Notify("Bring Car", "No vehicle found. Spawn your car first.", 4) return end
     local driverSeat = vehicle:FindFirstChild("DriverSeat")
     if not driverSeat then Notify("Bring Car", "Driver seat not found!", 3) return end
-
     local savedPosition = hrp.Position + Vector3.new(0, 3, 0)
     local camLook = Camera.CFrame.LookVector
     local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
     local targetCFrame = CFrame.lookAt(savedPosition, savedPosition + flatLook)
-
     Notify("Bring Car", "Bringing...", 2)
     driverSeat:Sit(humanoid)
     task.wait(0.3)
     vehicle:PivotTo(targetCFrame)
     Notify("Bring Car", "Success!", 3)
 end
-
 local isFlipping = false
 local function flipCar()
     if isFlipping then return end
@@ -269,7 +257,6 @@ local function flipCar()
     if flatLook.Magnitude < 0.01 then flatLook = Vector3.new(0, 0, 1) end
     flatLook = flatLook.Unit
     local targetCF = CFrame.lookAt(currentCF.Position, currentCF.Position + flatLook)
-
     local steps = 20
     local current = currentCF
     for i = 1, steps do
@@ -288,35 +275,27 @@ local function flipCar()
     isFlipping = false
     Notify("Flip Car", "Success!", 2)
 end
-
 -- ====================== Auto Apply on Car Entry ======================
 local function ApplyDefaultMods(vehicle)
     if not vehicle then return end
     local ok, Drive = GetDrive(vehicle)
     if not ok then return end
-
     if not VehicleDefaults[vehicle] then StoreDefaults(vehicle) end
-
     -- Auto FWD
     rawset(Drive, "Config", "FWD")
     -- Auto Sharper Steering
     rawset(Drive, "SteerRatio", 13)
     rawset(Drive, "Ackerman", 1.1)
     rawset(Drive, "SteerSpeed", 0.05)
-
     TryRestartVehicleUI()
-
     Notify("Auto Mods", "FWD + Sharper Steering applied to new car", 3, "check-circle")
 end
-
 -- Listen for when player sits in any vehicle seat
 local seatedConnection
 local function SetupAutoApply()
     if seatedConnection then seatedConnection:Disconnect() end
-
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local humanoid = character:WaitForChild("Humanoid")
-
     seatedConnection = humanoid.Seated:Connect(function(isSeated, seatPart)
         if isSeated and seatPart and seatPart.Name == "DriverSeat" then
             local vehicle = seatPart.Parent
@@ -327,19 +306,15 @@ local function SetupAutoApply()
         end
     end)
 end
-
 -- Re-setup when character respawns
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
     SetupAutoApply()
 end)
-
 -- Initial setup
 task.spawn(SetupAutoApply)
-
 -- ====================== Dedicated Essentials Tab ======================
 local EssentialsTab = Window:Tab({ Title = "Essentials", Icon = "lucide:sprout" })
-
 -- FLINGING
 EssentialsTab:Section({ Title = "Flinging" })
 local originalWalkFling = nil
@@ -371,7 +346,6 @@ local autoNoclipToggle = EssentialsTab:Toggle({
         end
     end,
 })
-
 local flingKeybindEnabled = cfg.flingKeybindEnabled ~= false
 EssentialsTab:Toggle({
     Title = "Fling Keybind Enabled",
@@ -382,7 +356,6 @@ EssentialsTab:Toggle({
         cfg.flingKeybindEnabled = state
     end,
 })
-
 local currentFlingKeybind = Enum.KeyCode[cfg.flingKeybind or "V"] or Enum.KeyCode.V
 EssentialsTab:Keybind({
     Title = "Fling Keybind",
@@ -395,7 +368,6 @@ EssentialsTab:Keybind({
         end
     end,
 })
-
 -- CAR FLY
 EssentialsTab:Section({ Title = "Car Fly" })
 EssentialsTab:Paragraph({
@@ -450,7 +422,6 @@ EssentialsTab:Slider({
         if carflyAPI then carflyAPI.setSpeed(flySpeedValue) end
     end,
 })
-
 -- VEHICLE MODS
 EssentialsTab:Section({ Title = "Vehicle Mods" })
 local selectedDrivetrain = cfg.drivetrain or "FWD"
@@ -514,7 +485,6 @@ EssentialsTab:Button({
         Notify("Reset", "Vehicle restored to defaults.", 4, "check-circle")
     end,
 })
-
 -- CAR QOL
 EssentialsTab:Section({ Title = "Car QoL" })
 EssentialsTab:Button({
@@ -535,7 +505,6 @@ EssentialsTab:Button({
     Icon = "rotate-cw",
     Callback = flipCar,
 })
-
 -- CONFIG
 EssentialsTab:Section({ Title = "Config" })
 EssentialsTab:Button({
@@ -562,7 +531,6 @@ EssentialsTab:Button({
         end
     end,
 })
-
 -- INPUT LISTENER
 task.spawn(function()
     UserInputService.InputBegan:Connect(function(input, processed)
@@ -575,7 +543,7 @@ task.spawn(function()
             else
                 structure.trolling.WalkFling:Set(not structure.trolling.WalkFling.Value)
             end
-            
+           
             local newState = structure.trolling.CarFling.Value or structure.trolling.WalkFling.Value
             if newState then
                 WindUI:Notify({ Title = "Fling Keybind", Content = "✅ Fling ENABLED", Duration = 3, Icon = "check-circle" })
@@ -590,15 +558,13 @@ task.spawn(function()
         end
     end)
 end)
-
 -- CREDITS
 EssentialsTab:Section({ Title = "Credits" })
 EssentialsTab:Paragraph({
     Title = "Essentials for ERX",
     Desc = "Combines QoL, CarFly, Vehicle Mods + Car QoL.\nMade by Claude + Grok. \nRevised by castel0v2",
 })
-
--- EXECUTOR INFO
+-- EXECUTOR INFO (moved above the support sections)
 EssentialsTab:Section({ Title = "Executor Info" })
 local ExecutorInfoParagraph
 local function BuildExecutorDesc()
@@ -654,6 +620,34 @@ EssentialsTab:Button({
             })
         end)
     end,
+})
+
+-- ====================== NEW SECTIONS ADDED HERE ======================
+
+-- ERX Supported Executor info
+EssentialsTab:Section({ Title = "ERX Supported Executor info" })
+EssentialsTab:Paragraph({
+    Title = "Officially Supported by ERX",
+    Desc = "Potassium: ✅\nUp to date: ✅\nsUNC Score: 95%+\nUNC Score: 98%+\n\n" ..
+           "Volt: ✅\nUp to date: ❌\nsUNC Score: 92%\nUNC Score: 95%\n\n" ..
+           "Synapse Z: ✅\nUp to date: ❌\nsUNC Score: 90%\nUNC Score: 94%\n\n" ..
+           "Madium: ✅\nUp to date: ✅\nsUNC Score: 93%\nUNC Score: 96%\n\n" ..
+           "Ronix: ✅\nUp to date: ✅\nsUNC Score: 88%\nUNC Score: 92%\n\n" ..
+           "OpiumWare: ✅ (Mac)\nUp to date: ❌\nsUNC Score: 85%\nUNC Score: 90%"
+})
+
+-- Unsupported ERX Executor info
+EssentialsTab:Section({ Title = "Unsupported ERX Executor info" })
+EssentialsTab:Paragraph({
+    Title = "Commonly Unsupported / Unstable for ERX",
+    Desc = "Xeno : ❌\nUp to date: ✅\nsUNC Score: 80%\nUNC Score: 85%\n\n" ..
+           "Wave : ❌\nUp to date: ❌\nsUNC Score: 88%\nUNC Score: 90%\n\n" ..
+           "Solara : ❌\nUp to date: ✅\nsUNC Score: 75%\nUNC Score: 82%\n\n" ..
+           "Velocity : ❌\nUp to date: ❌\nsUNC Score: 78%\nUNC Score: 84%\n\n" ..
+           "Delta : ❌\nUp to date: ❌\nsUNC Score: 70%\nUNC Score: 78%\n\n" ..
+           "SirHurt : ❌\nUp to date: ✅\nsUNC Score: 82%\nUNC Score: 87%\n\n" ..
+           "Hydrogen : ❌\nUp to date: ❌\nsUNC Score: 65%\nUNC Score: 72%\n\n" ..
+           "Codex : ❌\nUp to date: ❌\nsUNC Score: 68%\nUNC Score: 75%"
 })
 
 -- Init

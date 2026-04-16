@@ -631,47 +631,6 @@ EssentialsTab:Button({
         end)
     end,
 })
-
--- ====================== NEW SECTIONS ADDED HERE ======================
-
--- ERX Supported Executor info
-EssentialsTab:Section({ Title = "ERX Supported Executor info" })
-local SupportedParagraph
-local function BuildSupportedDesc()
-    local lines = {}
-    for internalName, info in pairs(ERX_SUPPORTED_EXECUTORS) do
-        local data = FetchWEAO(internalName)
-        local upToDate = (data and data.updateStatus) and "✅" or "❌"
-        local sunc = (data and data.suncPercentage) and (data.suncPercentage .. "%") or "N/A"
-        local unc = (data and data.uncPercentage) and (data.uncPercentage .. "%") or "N/A"
-        table.insert(lines, info.display .. ": ✅\nUp to date: " .. upToDate .. "\nsUNC Score: " .. sunc .. "\nUNC Score: " .. unc)
-    end
-    return table.concat(lines, "\n\n")
-end
-SupportedParagraph = EssentialsTab:Paragraph({
-    Title = "Officially Supported by ERX",
-    Desc = BuildSupportedDesc(),
-})
-
--- Unsupported ERX Executor info
-EssentialsTab:Section({ Title = "Unsupported ERX Executor info" })
-local UnsupportedParagraph
-local function BuildUnsupportedDesc()
-    local lines = {}
-    for internalName, displayName in pairs(UNSUPPORTED_EXECUTORS) do
-        local data = FetchWEAO(internalName)
-        local upToDate = (data and data.updateStatus) and "✅" or "❌"
-        local sunc = (data and data.suncPercentage) and (data.suncPercentage .. "%") or "N/A"
-        local unc = (data and data.uncPercentage) and (data.uncPercentage .. "%") or "N/A"
-        table.insert(lines, displayName .. ": ❌\nUp to date: " .. upToDate .. "\nsUNC Score: " .. sunc .. "\nUNC Score: " .. unc)
-    end
-    return table.concat(lines, "\n\n")
-end
-UnsupportedParagraph = EssentialsTab:Paragraph({
-    Title = "Commonly Unsupported / Unstable for ERX",
-    Desc = BuildUnsupportedDesc(),
-})
-
 -- Update the Refresh button to also refresh the new sections
 local oldRefresh = RefreshExecutorInfo
 RefreshExecutorInfo = function()

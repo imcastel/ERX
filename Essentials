@@ -541,26 +541,53 @@ EssentialsTab:Button({
         end
     end,
 })
--- INPUT LISTENER
+-- FIXED INPUT LISTENER (only this section was updated for correct ENABLE/DISABLE notifications)
 task.spawn(function()
     UserInputService.InputBegan:Connect(function(input, processed)
         if processed or not _G.WindUI then return end
+
+        -- Fling Keybind (fixed version)
         if flingKeybindEnabled and input.KeyCode == currentFlingKeybind then
             local char = LocalPlayer.Character
             local hum = char and char:FindFirstChildWhichIsA("Humanoid")
-            if hum and hum.SeatPart and hum.SeatPart:IsDescendantOf(Workspace.Vehicles) then
-                structure.trolling.CarFling:Set(not structure.trolling.CarFling.Value)
+            local isInVehicle = hum and hum.SeatPart and hum.SeatPart:IsDescendantOf(Workspace.Vehicles)
+
+            local flingToggle
+            if isInVehicle then
+                flingToggle = structure.trolling.CarFling
             else
-                structure.trolling.WalkFling:Set(not structure.trolling.WalkFling.Value)
+                flingToggle = structure.trolling.WalkFling
             end
-          
-            local newState = structure.trolling.CarFling.Value or structure.trolling.WalkFling.Value
-            if newState then
-                WindUI:Notify({ Title = "Fling Keybind", Content = "✅ Fling ENABLED", Duration = 3, Icon = "check-circle" })
+
+            if not flingToggle then return end
+
+            -- Get current state BEFORE toggling
+            local wasEnabled = flingToggle.Value
+
+            -- Perform the toggle
+            flingToggle:Set(not wasEnabled)
+
+            -- Now determine the NEW state reliably after Set()
+            local nowEnabled = flingToggle.Value
+
+            if nowEnabled then
+                WindUI:Notify({
+                    Title = "Fling Keybind",
+                    Content = "✅ Fling ENABLED (" .. (isInVehicle and "Car" or "Walk") .. ")",
+                    Duration = 3,
+                    Icon = "check-circle"
+                })
             else
-                WindUI:Notify({ Title = "Fling Keybind", Content = "❌ Fling DISABLED", Duration = 3, Icon = "x-circle" })
+                WindUI:Notify({
+                    Title = "Fling Keybind",
+                    Content = "❌ Fling DISABLED",
+                    Duration = 3,
+                    Icon = "x-circle"
+                })
             end
         end
+
+        -- Car Fly Keybind (unchanged, kept here for single listener)
         if input.KeyCode == currentFlyKeybind then
             if getgenv()._essentials_carfly_keybind then
                 getgenv()._essentials_carfly_keybind()

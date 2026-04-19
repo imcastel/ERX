@@ -1,11 +1,3 @@
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
-
--- User ID Protection Check
-if LocalPlayer.UserId ~= 1726869737 then 
-    warn("Unauthorized User: Access Denied.")
-    return -- This stops the rest of the script from running
-end
 
 
 repeat task.wait() until _G.WindUI and _G.Window and _G.Functions

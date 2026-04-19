@@ -1,3 +1,13 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+
+-- User ID Protection Check
+if LocalPlayer.UserId ~= 1726869737 then 
+    warn("Unauthorized User: Access Denied.")
+    return -- This stops the rest of the script from running
+end
+
+
 repeat task.wait() until _G.WindUI and _G.Window and _G.Functions
 if not _G.ERXStructure then
     loadstring(game:HttpGet("https://raw.githubusercontent.com/adamMasMusic/ERX/refs/heads/main/structure.lua"))()

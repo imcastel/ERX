@@ -326,7 +326,7 @@ end)
 -- Initial setup
 task.spawn(SetupAutoApply)
 -- ====================== Dedicated Essentials Tab ======================
-local EssentialsTab = Window:Tab({ Title = "Essentials", Icon = "lucide:sprout" })
+local EssentialsTab = Window:Tab({ Title = "Essentials", Icon = "lucide:cpu" })
 -- FLINGING
 EssentialsTab:Section({ Title = "Flinging" })
 local originalWalkFling = nil
@@ -601,7 +601,7 @@ end)
 EssentialsTab:Section({ Title = "Credits" })
 EssentialsTab:Paragraph({
     Title = "Essentials for ERX",
-    Desc = "Combines QoL, CarFly, Vehicle Mods + Car QoL.\nMade by Claude + Grok. \nRevised by castel0v2",
+    Desc = "Combines QoL, CarFly, Vehicle Mods + Car QoL by woah679.\nMade by Claude + Grok. \nRevised by castel0v2",
 })
 -- EXECUTOR INFO
 EssentialsTab:Section({ Title = "Executor Info" })
@@ -689,5 +689,5 @@ WindUI:Notify({
     Title = "Essentials loaded",
     Content = "Auto FWD + Sharper Steering on car entry enabled",
     Duration = 5,
-    Icon = "lucide:sprout",
+    Icon = "lucide:cpu",
 })

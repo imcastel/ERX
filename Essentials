@@ -681,7 +681,7 @@ RefreshExecutorInfo = function()
 end
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/imcastel/ERXCF/refs/heads/main/ServerHop"))()
-
+loadstring(game:HttpGet("https://raw.githubusercontent.com/imcastel/ERXCF/refs/heads/main/Viewer"))()
 -- Init
 if carflyAPI then carflyAPI.setSpeed(flySpeedValue) end
 task.delay(2, RefreshExecutorInfo)

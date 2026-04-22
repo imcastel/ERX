@@ -685,9 +685,3 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/imcastel/ERXCF/refs/h
 -- Init
 if carflyAPI then carflyAPI.setSpeed(flySpeedValue) end
 task.delay(2, RefreshExecutorInfo)
-WindUI:Notify({
-    Title = "Essentials loaded",
-    Content = "Auto FWD + Sharper Steering on car entry enabled",
-    Duration = 5,
-    Icon = "lucide:cpu",
-})
